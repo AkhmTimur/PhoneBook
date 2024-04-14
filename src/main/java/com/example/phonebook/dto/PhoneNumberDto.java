@@ -1,18 +1,20 @@
 package com.example.phonebook.dto;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 
 @Data
 @AllArgsConstructor
+@Builder
 public class PhoneNumberDto {
-    String digit;
+    String digits;
     String phoneType;
 
     @Override
     public String toString() {
         return "PhoneNumber{" +
-                "digits='" + digit + '\'' +
+                "digits='" + digits + '\'' +
                 ", type='" + phoneType + '\'' +
                 '}';
     }

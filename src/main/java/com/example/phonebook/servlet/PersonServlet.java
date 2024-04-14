@@ -1,28 +1,37 @@
 package com.example.phonebook.servlet;
 
-import com.example.phonebook.dao.PostgreSQLConnection;
+import com.example.phonebook.dao.PersonDAO;
+import com.example.phonebook.dao.PhoneNumberDAO;
+import com.example.phonebook.dto.PersonDto;
+import com.example.phonebook.exception.PersonNotFoundException;
+import com.example.phonebook.mapper.NumberMapper;
+import com.example.phonebook.mapper.PersonMapper;
 import com.example.phonebook.model.Person;
 import com.example.phonebook.model.PhoneNumber;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import lombok.extern.log4j.Log4j;
+import org.apache.log4j.Logger;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @WebServlet("/person")
-@Log4j
 public class PersonServlet extends HttpServlet {
 
+    private static final Logger log = Logger.getLogger(PersonServlet.class);
     private final Gson gson = new Gson();
+    private final PersonDAO personDAO = new PersonDAO();
+    private final PersonMapper personMapper = new PersonMapper();
+    private final PhoneNumberDAO phoneDao = new PhoneNumberDAO();
 
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) {
@@ -34,42 +43,15 @@ public class PersonServlet extends HttpServlet {
             log.debug(e.getMessage());
         }
 
-        if(id != null) {
+        if (id != null) {
             getPersonById(response, id);
         } else {
             getPeople(response);
         }
-
-    }
-
-    private void getPersonById(HttpServletResponse response, Integer id) {
-        Person person = PostgreSQLConnection.getPersonById(id);
-        try {
-            PrintWriter out = response.getWriter();
-            if(person != null) {
-                out.println(person);
-            }
-        } catch (IOException e) {
-            log.debug(e.getMessage());
-        }
-    }
-
-    private void getPeople(HttpServletResponse response) {
-        List<Person> people = PostgreSQLConnection.getAllPersons();
-        try {
-            PrintWriter out = response.getWriter();
-            if(!people.isEmpty()) {
-                for (Person person : people) {
-                    out.println(person);
-                }
-            }
-        } catch (IOException e) {
-            log.debug(e.getMessage());
-        }
     }
 
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) {
+    public void doPost(HttpServletRequest request, HttpServletResponse response) {
         processRequest(request, response);
     }
 
@@ -83,25 +65,43 @@ public class PersonServlet extends HttpServlet {
         processRequest(request, response);
     }
 
+    private void getPersonById(HttpServletResponse response, Integer id) {
+        try {
+            PrintWriter out = response.getWriter();
+            PersonDto personDto = personMapper.personToDto(personDAO.getPersonById(id));
+            out.println(personDto);
+        } catch (IOException | PersonNotFoundException e) {
+            log.debug(e.getMessage());
+        }
+    }
+
+    private void getPeople(HttpServletResponse response) {
+        try {
+            PrintWriter out = response.getWriter();
+            Map<Integer, Person> people = personDAO.getAllPersons();
+            Map<Integer, List<PhoneNumber>> phones = phoneDao.getPeoplePhones();
+            for (Map.Entry<Integer, List<PhoneNumber>> entry : phones.entrySet()) {
+                people.get(entry.getKey()).setPhoneNumbers(entry.getValue());
+            }
+            if (!people.isEmpty()) {
+                for (Person person : people.values()) {
+                    out.println(personMapper.personToDto(person));
+                }
+            }
+        } catch (IOException e) {
+            log.debug(e.getMessage());
+        }
+    }
+
     private void processRequest(HttpServletRequest request, HttpServletResponse response) {
         try {
-            String requestBody = request.getReader().lines().collect(Collectors.joining());
-            JsonObject jsonObject = gson.fromJson(requestBody, JsonObject.class);
-
-            String name = jsonObject.get("name").getAsString();
-            String surname = jsonObject.get("surname").getAsString();
-            Integer age = jsonObject.get("age").getAsInt();
-            JsonObject phoneNumbersJson = jsonObject.getAsJsonObject("phoneNumbers");
-
-            List<PhoneNumber> phoneNumbers = parsePhoneNumbers(phoneNumbersJson);
-
             String method = request.getMethod();
             switch (method) {
                 case "POST":
-                    handlePost(response, name, surname, age, phoneNumbers);
+                    handlePost(request, response);
                     break;
                 case "PUT":
-                    handlePut(request, response, name, surname, age, phoneNumbers);
+                    handlePut(request, response);
                     break;
                 case "DELETE":
                     handleDelete(request, response);
@@ -117,40 +117,28 @@ public class PersonServlet extends HttpServlet {
         }
     }
 
-    private void handlePost(HttpServletResponse response, String name, String surname, Integer age,
-                            List<PhoneNumber> phoneNumbers) throws IOException {
-        Person person = new Person(name, surname, age, phoneNumbers);
+    private void handlePost(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        PersonDto personDto = extractPersonFromRequest(request);
         PrintWriter out = response.getWriter();
-        new PostgreSQLConnection();
-        int id = PostgreSQLConnection.addPerson(person);
-        person.setId(id);
-
+        int id = personDAO.addPerson(personMapper.dtoToPerson(personDto));
+        personDto.setId(id);
         response.setStatus(HttpServletResponse.SC_CREATED);
-
-        out.println("Person Added: " + person);
-
+        out.println("Person Added: " + personDto);
     }
 
-    private void handlePut(HttpServletRequest request, HttpServletResponse response, String name,
-                           String surname, Integer age, List<PhoneNumber> phoneNumbers) throws IOException {
-        String idParam = request.getParameter("id");
-        if (idParam != null) {
-            int id = Integer.parseInt(idParam);
-            Person person = findPersonById(id);
-            if (person != null) {
-                person.setName(name);
-                person.setSurname(surname);
-                person.setAge(age);
-                person.setPhoneNumbers(phoneNumbers);
-
-                response.setStatus(HttpServletResponse.SC_OK);
-                PrintWriter out = response.getWriter();
-                out.println("Person Updated: " + person);
-            } else {
-                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            }
-        } else {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    private void handlePut(HttpServletRequest request, HttpServletResponse response) {
+        int id = Integer.parseInt(request.getParameter("id"));
+        try {
+            PersonDto personDto = extractPersonFromRequest(request);
+            PrintWriter out = response.getWriter();
+            personDAO.updatePerson(id, personMapper.dtoToPerson(personDto));
+            personDto.setId(id);
+            response.setStatus(HttpServletResponse.SC_OK);
+            out.println("Person Updated: " + personDto);
+        } catch (PersonNotFoundException e) {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+        } catch (IOException e) {
+            log.debug(e.getMessage());
         }
     }
 
@@ -158,19 +146,38 @@ public class PersonServlet extends HttpServlet {
         String idParam = request.getParameter("id");
         if (idParam != null) {
             int id = Integer.parseInt(idParam);
-            Person person = findPersonById(id);
-            if (person != null) {
-
-                //persons.remove(person);
-                response.setStatus(HttpServletResponse.SC_OK);
-                PrintWriter out = response.getWriter();
-                out.println("Person Deleted: " + person);
-            } else {
+            try {
+                personDAO.getPersonById(id);
+                personDAO.deletePerson(id);
+                response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+            } catch (PersonNotFoundException e) {
                 response.setStatus(HttpServletResponse.SC_NOT_FOUND);
             }
         } else {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         }
+    }
+
+    private PersonDto extractPersonFromRequest(HttpServletRequest request) {
+        JsonObject jsonObject = extractJsonFromRequest(request);
+        int id = -1;
+        if(jsonObject.has("id")) {
+            id = jsonObject.get("id").getAsInt();
+        }
+        String name = jsonObject.get("name").getAsString();
+        String surname = jsonObject.get("surname").getAsString();
+        Integer age = jsonObject.get("age").getAsInt();
+        JsonObject phoneNumbersJson = jsonObject.getAsJsonObject("phoneNumbers");
+        List<PhoneNumber> phoneNumbers = parsePhoneNumbers(phoneNumbersJson);
+        if (id != -1) {
+            return new PersonDto(id, name, surname, age, phoneNumbers);
+        }
+        return PersonDto.builder()
+                .name(name)
+                .surname(surname)
+                .age(age)
+                .phoneNumbers(phoneNumbers)
+                .build();
     }
 
     private List<PhoneNumber> parsePhoneNumbers(JsonObject phoneNumbersJson) {
@@ -184,12 +191,14 @@ public class PersonServlet extends HttpServlet {
         return phoneNumbers;
     }
 
-    private Person findPersonById(int id) {
-//        for (Person person : persons) {
-//            if (person.getId() == id) {
-//                return person;
-//            }
-//        }
-        return null;
+    private JsonObject extractJsonFromRequest(HttpServletRequest request) {
+        String requestBody = null;
+        try {
+            requestBody = request.getReader().lines().collect(Collectors.joining());
+        } catch (IOException e) {
+            log.debug(e.getMessage());
+        }
+        return gson.fromJson(requestBody, JsonObject.class);
     }
 }
+

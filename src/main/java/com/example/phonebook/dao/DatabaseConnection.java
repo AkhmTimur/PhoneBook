@@ -2,10 +2,7 @@ package com.example.phonebook.dao;
 
 import org.apache.log4j.Logger;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 
 public class DatabaseConnection {
 
@@ -23,19 +20,18 @@ public class DatabaseConnection {
             "age INT" +
             ")";
 
-    static String phone_numbers = "CREATE TABLE IF NOT EXISTS phoneNumbers (" +
+    static String phoneNumbersTable = "CREATE TABLE IF NOT EXISTS phone_numbers (" +
             "digits VARCHAR(100) PRIMARY KEY," +
             "phone_type VARCHAR(100) NOT NULL" +
             ")";
 
-    static String person_phone_numbers = "CREATE TABLE IF NOT EXISTS person_phoneNumbers (" +
+    static String personPhoneNumbers = "CREATE TABLE IF NOT EXISTS person_phonenumbers (" +
             "person_id INT," +
-            "phone_number_digit VARCHAR(15)," +
+            "phone_number_digit VARCHAR(100)," +
             "FOREIGN KEY (person_id) REFERENCES person(id)," +
             "FOREIGN KEY (phone_number_digit) REFERENCES phone_numbers(digits)," +
             "PRIMARY KEY (person_id, phone_number_digit)" +
             ")";
-
 
     public static Connection getConnection() {
         loadDBDriver();
@@ -52,13 +48,17 @@ public class DatabaseConnection {
 
     private static void initializeTables() {
         try (Statement statement = getConnection().createStatement()) {
+            statement.executeUpdate("DROP TABLE person_phoneNumbers");
+            statement.executeUpdate("DROP TABLE phone_numbers");
+            statement.executeUpdate("DROP TABLE person");
             statement.executeUpdate(personTable);
             statement.executeUpdate(phoneNumbersTable);
             statement.executeUpdate(personPhoneNumbers);
-        } catch (SQLException | NullPointerException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
 
     private static void loadDBDriver() {
         try {

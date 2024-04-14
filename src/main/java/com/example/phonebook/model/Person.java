@@ -8,19 +8,13 @@ import java.util.List;
 
 @Data
 @AllArgsConstructor
+@Builder
 public class Person {
     int id;
     String name;
     String surname;
     Integer age;
     List<PhoneNumber> phoneNumbers;
-
-    public Person(String name, String surname, Integer age, List<PhoneNumber> phoneNumbers) {
-        this.name = name;
-        this.surname = surname;
-        this.age = age;
-        this.phoneNumbers = phoneNumbers;
-    }
 
     @Override
     public String toString() {

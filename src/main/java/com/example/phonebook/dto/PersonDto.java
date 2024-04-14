@@ -2,12 +2,14 @@ package com.example.phonebook.dto;
 
 import com.example.phonebook.model.PhoneNumber;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 
 import java.util.List;
 
 @Data
 @AllArgsConstructor
+@Builder
 public class PersonDto {
     int id;
     String name;
