@@ -1,6 +1,7 @@
 package com.example.phonebook;
 
-import com.example.phonebook.servlet.PersonServlet;
+
+import com.example.phonebook.servlets.PersonServlet;
 import org.apache.catalina.Context;
 import org.apache.catalina.startup.Tomcat;
 

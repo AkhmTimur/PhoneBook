@@ -3,6 +3,7 @@ package com.example.phonebook.dao;
 import com.example.phonebook.exception.PersonNotFoundException;
 import com.example.phonebook.model.Person;
 import com.example.phonebook.model.PhoneNumber;
+import com.example.phonebook.util.DatabaseConnection;
 import org.apache.log4j.Logger;
 
 import java.sql.*;
@@ -11,20 +12,21 @@ import java.util.*;
 public class PersonDAO {
 
     private static final Logger log = Logger.getLogger(PersonDAO.class);
-    private static final Connection connection = DatabaseConnection.getConnection();
+    private final Connection connection;
     private static final PhoneNumberDAO phoneNumberDAO = new PhoneNumberDAO();
 
     public PersonDAO() {
+        connection = DatabaseConnection.getConnection();
     }
 
-    public int addPerson(Person personDto) {
+    public int addPerson(Person person) {
         int id = 0;
         String insertPersonSQL = "INSERT INTO person (name, surname, age) VALUES (?, ?, ?);";
 
         try (PreparedStatement ps = connection.prepareStatement(insertPersonSQL, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, personDto.getName());
-            ps.setString(2, personDto.getSurname());
-            ps.setInt(3, personDto.getAge());
+            ps.setString(1, person.getName());
+            ps.setString(2, person.getSurname());
+            ps.setInt(3, person.getAge());
             ps.execute();
             ResultSet generatedKeys = ps.getGeneratedKeys();
             if (generatedKeys.next()) {
@@ -35,12 +37,12 @@ public class PersonDAO {
             log.debug(e.getMessage());
         }
 
-        phoneNumberDAO.addPhoneNumber(personDto.getPhoneNumbers());
-        phoneNumberDAO.addPersonPhoneNumber(personDto.getPhoneNumbers(), id);
+        phoneNumberDAO.addPhoneNumber(person.getPhoneNumbers());
+        phoneNumberDAO.addPersonPhoneNumber(person.getPhoneNumbers(), id);
         return id;
     }
 
-    public Map<Integer, Person> getAllPersons() {
+    public Map<Integer, Person> getPeople() {
         Map<Integer, Person> result = new HashMap<>();
         Map<Integer, Person> personMap = new HashMap<>();
         String person = "SELECT * FROM person;";
@@ -83,9 +85,9 @@ public class PersonDAO {
             preparedStatement.setInt(1, id);
             ResultSet resultSet = preparedStatement.executeQuery();
             if (resultSet.next()) {
-                Person personDto = extractPerson(resultSet);
-                personDto.setPhoneNumbers(phoneNumberDAO.getPersonPhone(personDto.getId()));
-                return personDto;
+                Person person = extractPerson(resultSet);
+                person.setPhoneNumbers(phoneNumberDAO.getPersonPhone(person.getId()));
+                return person;
             }
         } catch (SQLException e) {
             log.debug(e.getMessage());

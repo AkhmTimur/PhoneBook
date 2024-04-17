@@ -1,6 +1,7 @@
 package com.example.phonebook.dao;
 
 import com.example.phonebook.model.PhoneNumber;
+import com.example.phonebook.util.DatabaseConnection;
 import org.apache.log4j.Logger;
 
 import java.sql.Connection;
@@ -28,33 +29,18 @@ public class PhoneNumberDAO {
                 String digits = rs.getString("digits");
                 String phoneType = rs.getString("phone_type");
 
-                List<PhoneNumber> tmp = result.get(person_id);
+                List<PhoneNumber> tmp = new ArrayList<>();
+                if(result.containsKey(person_id)) {
+                    tmp.addAll(result.get(person_id));
+                }
                 tmp.add(new PhoneNumber(digits, phoneType));
                 result.put(person_id, tmp);
             }
         } catch (SQLException e) {
             log.debug(e.getMessage());
         }
-        result.put(1, Collections.emptyList());
         return result;
     }
-
-    public List<PhoneNumber> getPhone() {
-        List<PhoneNumber> result = new ArrayList<>();
-        String sql = "SELECT * FROM phone_numbers";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
-            if(rs.next()) {
-                String digit = rs.getString("digits");
-                String phoneType = rs.getString("phone_type");
-                result.add(new PhoneNumber(digit, phoneType));
-            }
-        } catch (SQLException e) {
-            log.debug(e.getMessage());
-        }
-        return result;
-    }
-
 
     public List<PhoneNumber> getPersonPhone(int id) {
         String sql = "SELECT pn.* FROM person_phonenumbers ppn " +
@@ -79,6 +65,7 @@ public class PhoneNumberDAO {
     public void addPhoneNumber(List<PhoneNumber> phoneNumberList) {
         String insertPhoneNumber = "INSERT INTO phone_numbers (digits, phone_type) VALUES (?, ?)";
         try (PreparedStatement ps = connection.prepareStatement(insertPhoneNumber)) {
+
             for (PhoneNumber phoneNumber : phoneNumberList) {
                 ps.setString(1, phoneNumber.getDigits());
                 ps.setString(2, phoneNumber.getPhoneType());
@@ -92,7 +79,6 @@ public class PhoneNumberDAO {
 
     public void addPersonPhoneNumber(List<PhoneNumber> phoneNumberList, int personId) {
         String insertPersonPhoneNumber = "INSERT INTO person_phonenumbers (person_id, phone_number_digit) VALUES (?, ?);";
-
         try (PreparedStatement ps = connection.prepareStatement(insertPersonPhoneNumber)) {
             for (PhoneNumber phoneNumber : phoneNumberList) {
                 ps.setInt(1, personId);

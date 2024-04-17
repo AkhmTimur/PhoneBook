@@ -7,7 +7,7 @@ import com.example.phonebook.exception.PersonNotFoundException;
 import com.example.phonebook.mapper.PersonMapper;
 import com.example.phonebook.model.Person;
 import com.example.phonebook.model.PhoneNumber;
-import com.example.phonebook.servlet.PersonServlet;
+import com.example.phonebook.servlets.PersonServlet;
 import com.google.gson.JsonObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,7 +41,7 @@ class PersonServletTest {
     private PersonMapper personMapper;
 
     @InjectMocks
-    private PersonServlet personServlet;
+    private PersonServlet personController;
 
     @BeforeEach
     void setUp() {
@@ -60,7 +60,7 @@ class PersonServletTest {
         PrintWriter writer = new PrintWriter(stringWriter);
         when(response.getWriter()).thenReturn(writer);
 
-        personServlet.doGet(request, response);
+        personController.doGet(request, response);
         writer.flush();
 
         verify(response).setContentType("application/json");
@@ -75,7 +75,7 @@ class PersonServletTest {
         PrintWriter writer = new PrintWriter(stringWriter);
         when(response.getWriter()).thenReturn(writer);
 
-        personServlet.doGet(request, response);
+        personController.doGet(request, response);
         writer.flush();
 
         verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -102,7 +102,7 @@ class PersonServletTest {
         PrintWriter writer = new PrintWriter(stringWriter);
         when(response.getWriter()).thenReturn(writer);
 
-        personServlet.doPost(request, response);
+        personController.doPost(request, response);
         writer.flush();
 
         verify(response).setStatus(HttpServletResponse.SC_CREATED);
@@ -121,10 +121,10 @@ class PersonServletTest {
         people.put(1, person1);
         people.put(2, person2);
 
-        when(personDAO.getAllPersons()).thenReturn(people);
+        when(personDAO.getPeople()).thenReturn(people);
         when(phoneNumberDAO.getPeoplePhones()).thenReturn(Collections.emptyMap());
 
-        personServlet.doGet(request, response);
+        personController.doGet(request, response);
 
         String expectedResponse = "{\"id\":1,\"name\":\"John\",\"surname\":\"Doe\",\"age\":30,\"phoneNumbers\":[]}\n" +
                 "{\"id\":2,\"name\":\"Jane\",\"surname\":\"Smith\",\"age\":25,\"phoneNumbers\":[]}\n";
@@ -141,7 +141,7 @@ class PersonServletTest {
         when(personDAO.getPersonById(1)).thenReturn(person);
 
         when(request.getParameter("id")).thenReturn("1");
-        personServlet.doGet(request, response);
+        personController.doGet(request, response);
 
         String expectedResponse = "{\"id\":1,\"name\":\"John\",\"surname\":\"Doe\",\"age\":30,\"phoneNumbers\":[]}";
         assertEquals(expectedResponse, stringWriter.toString());

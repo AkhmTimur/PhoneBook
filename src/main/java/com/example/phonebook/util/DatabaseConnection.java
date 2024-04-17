@@ -1,4 +1,4 @@
-package com.example.phonebook.dao;
+package com.example.phonebook.util;
 
 import org.apache.log4j.Logger;
 
@@ -8,7 +8,7 @@ public class DatabaseConnection {
 
     private static final Logger log = Logger.getLogger(DatabaseConnection.class);
     private static final String DRIVER_CLASS_NAME = "org.postgresql.Driver";
-    private static final String DB_URL = "jdbc:postgresql://localhost:5432/postgres";
+    private static String URL = "jdbc:postgresql://localhost:5432/postgres";
     private static final String USER = "postgres";
     private static final String PASSWORD = "postgres";
     private static Connection connection;
@@ -37,7 +37,7 @@ public class DatabaseConnection {
         loadDBDriver();
         if (connection == null) {
             try {
-                connection = DriverManager.getConnection(DB_URL, USER, PASSWORD);
+                connection = DriverManager.getConnection(URL, USER, PASSWORD);
                 initializeTables();
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -48,9 +48,6 @@ public class DatabaseConnection {
 
     private static void initializeTables() {
         try (Statement statement = getConnection().createStatement()) {
-            statement.executeUpdate("DROP TABLE person_phoneNumbers");
-            statement.executeUpdate("DROP TABLE phone_numbers");
-            statement.executeUpdate("DROP TABLE person");
             statement.executeUpdate(personTable);
             statement.executeUpdate(phoneNumbersTable);
             statement.executeUpdate(personPhoneNumbers);
@@ -66,5 +63,9 @@ public class DatabaseConnection {
         } catch (ClassNotFoundException e) {
             log.debug(e.getMessage());
         }
+    }
+
+    public static void setURL(String jdbcUrl) {
+        URL = jdbcUrl;
     }
 }
