@@ -1,7 +1,8 @@
-package com.example.phonebook.servlets;
+package com.example.phonebook.servlet;
 
 import com.example.phonebook.dao.PersonDAO;
 import com.example.phonebook.model.Person;
+import com.example.phonebook.servlets.PhoneBookServlet;
 import com.google.gson.Gson;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
