@@ -26,9 +26,21 @@ public class PersonServlet extends HttpServlet {
 
     private static final Logger log = Logger.getLogger(PersonServlet.class);
     private final Gson gson = new Gson();
-    private final PersonDAO personDAO = new PersonDAO();
-    private final PersonMapper personMapper = new PersonMapper();
-    private final PhoneNumberDAO phoneDao = new PhoneNumberDAO();
+    private final PersonDAO personDAO;
+    private final PersonMapper personMapper;
+    private final PhoneNumberDAO phoneDao;
+
+    public PersonServlet() {
+        this.personDAO = new PersonDAO();
+        this.personMapper = new PersonMapper();
+        this.phoneDao = new PhoneNumberDAO();
+    }
+
+    public PersonServlet(PersonDAO personDAO, PersonMapper personMapper, PhoneNumberDAO phoneDao) {
+        this.personDAO = personDAO;
+        this.personMapper = personMapper;
+        this.phoneDao = phoneDao;
+    }
 
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) {
@@ -63,14 +75,20 @@ public class PersonServlet extends HttpServlet {
 
     private void getPersonById(HttpServletResponse response, Integer id) {
         try {
-            PersonDto personDto = personMapper.personToDto(personDAO.getPersonById(id));
-            String json = gson.toJson(personDto);
-            setContextTypeAndEncoding(response);
-            response.getWriter().write(json);
-        } catch (IOException | PersonNotFoundException e) {
+            Person person = personDAO.getPersonById(id);
+            if (person != null) {
+                PersonDto personDto = personMapper.personToDto(person);
+                String json = gson.toJson(personDto);
+                setContextTypeAndEncoding(response);
+                response.getWriter().write(json);
+            } else {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND, "Person not found");
+            }
+        } catch (IOException e) {
             log.debug(e.getMessage());
         }
     }
+
 
     private void getPeople(HttpServletResponse response) {
         try {
@@ -146,7 +164,13 @@ public class PersonServlet extends HttpServlet {
     private void handleDelete(HttpServletRequest request, HttpServletResponse response) {
         String idParam = request.getParameter("id");
         if (idParam != null) {
-            int id = Integer.parseInt(idParam);
+            int id = -1;
+            try {
+                id = Integer.parseInt(idParam);
+            } catch (NumberFormatException e) {
+                log.debug(e.getMessage());
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            }
             try {
                 personDAO.getPersonById(id);
                 personDAO.deletePerson(id);
@@ -197,17 +221,6 @@ public class PersonServlet extends HttpServlet {
                 .age(age)
                 .phoneNumbers(phoneNumbers)
                 .build();
-    }
-
-    private List<PhoneNumber> parsePhoneNumbers(JsonObject phoneNumbersJson) {
-        List<PhoneNumber> phoneNumbers = new ArrayList<>();
-        if (phoneNumbersJson != null) {
-            for (Map.Entry<String, JsonElement> entry : phoneNumbersJson.entrySet()) {
-                String phoneType = entry.getValue().getAsString();
-                phoneNumbers.add(new PhoneNumber(entry.getKey(), phoneType));
-            }
-        }
-        return phoneNumbers;
     }
 
     private JsonObject extractJsonFromRequest(HttpServletRequest request) {

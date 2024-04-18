@@ -27,11 +27,11 @@ public class PersonDto {
 
     @Override
     public String toString() {
-        return "Person{id=" + id +
-                ", name='" + name + '\'' +
-                ", surname='" + surname + '\'' +
-                ", age='" + age + '\'' +
-                ", phoneNumbers=" + phoneNumbers +
+        return "{\"id\":" + id +
+                ",\"name\":\"" + name + '\"' +
+                ",\"surname\":\"" + surname + '\"' +
+                ",\"age\":" + age  +
+                ",\"phoneNumbers\":" + phoneNumbers +
                 '}';
     }
 }

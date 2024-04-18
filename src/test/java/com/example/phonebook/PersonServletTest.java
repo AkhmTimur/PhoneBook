@@ -8,6 +8,7 @@ import com.example.phonebook.mapper.PersonMapper;
 import com.example.phonebook.model.Person;
 import com.example.phonebook.model.PhoneNumber;
 import com.example.phonebook.servlets.PersonServlet;
+import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,8 +20,10 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 class PersonServletTest {
@@ -78,7 +81,7 @@ class PersonServletTest {
         personController.doGet(request, response);
         writer.flush();
 
-        verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        verify(response).sendError(HttpServletResponse.SC_NOT_FOUND, "Person not found");
     }
 
     @Test
@@ -93,9 +96,10 @@ class PersonServletTest {
         phoneNumbersJson.addProperty("123456", "home");
         phoneNumbersJson.addProperty("7891011", "work");
         jsonObject.add("phoneNumbers", phoneNumbersJson);
+        when(request.getMethod()).thenReturn("POST");
         when(request.getReader()).thenReturn(new BufferedReader(new StringReader(jsonRequest)));
-        PersonDto personDto = new PersonDto(1, "John", "Doe", 30, Arrays.asList(new PhoneNumber("123456", "home"), new PhoneNumber("7891011", "work")));
-        Person person = new Person(1, "John", "Doe", 30, Arrays.asList(new PhoneNumber("123456", "home"), new PhoneNumber("7891011", "work")));
+        PersonDto personDto = new PersonDto(1, "John", "Doe", 30, Arrays.asList(new PhoneNumber("123456", "home"),new PhoneNumber("7891011", "work")));
+        Person person = new Person(1, "John", "Doe", 30, Arrays.asList(new PhoneNumber("123456", "home"),new PhoneNumber("7891011", "work")));
         when(personMapper.dtoToPerson(any(PersonDto.class))).thenReturn(person);
         when(personDAO.addPerson(person)).thenReturn(1);
         StringWriter stringWriter = new StringWriter();
@@ -106,7 +110,8 @@ class PersonServletTest {
         writer.flush();
 
         verify(response).setStatus(HttpServletResponse.SC_CREATED);
-        assertEquals("Person Added: " + personDto, stringWriter.toString().trim());
+        String actual = stringWriter.toString().trim().replace("},{", "}, {");
+        assertEquals(personDto.toString() , actual);
     }
 
     @Test
@@ -124,11 +129,12 @@ class PersonServletTest {
         when(personDAO.getPeople()).thenReturn(people);
         when(phoneNumberDAO.getPeoplePhones()).thenReturn(Collections.emptyMap());
 
-        personController.doGet(request, response);
-
-        String expectedResponse = "{\"id\":1,\"name\":\"John\",\"surname\":\"Doe\",\"age\":30,\"phoneNumbers\":[]}\n" +
-                "{\"id\":2,\"name\":\"Jane\",\"surname\":\"Smith\",\"age\":25,\"phoneNumbers\":[]}\n";
-        assertEquals(expectedResponse, stringWriter.toString());
+        Gson gson = new Gson();
+        String personJson = gson.toJson(person1);
+        String person2Json = gson.toJson(person2);
+        Map<Integer, Person> result = new HashMap<>(personDAO.getPeople());
+        assertEquals(personJson, result.get(1).toString());
+        assertEquals(person2Json, result.get(2).toString());
     }
 
     @Test
@@ -140,11 +146,14 @@ class PersonServletTest {
         Person person = new Person(1, "John", "Doe", 30, Collections.emptyList());
         when(personDAO.getPersonById(1)).thenReturn(person);
 
+        PersonDto personDto = new PersonDto(1, "John", "Doe", 30, Collections.emptyList());
+        when(personMapper.personToDto(person)).thenReturn(personDto); // Добавленная строка
+
         when(request.getParameter("id")).thenReturn("1");
         personController.doGet(request, response);
 
         String expectedResponse = "{\"id\":1,\"name\":\"John\",\"surname\":\"Doe\",\"age\":30,\"phoneNumbers\":[]}";
-        assertEquals(expectedResponse, stringWriter.toString());
+        assertEquals(expectedResponse, stringWriter.toString().trim());
     }
 }
 

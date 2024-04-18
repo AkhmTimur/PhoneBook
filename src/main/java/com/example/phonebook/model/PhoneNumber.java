@@ -15,9 +15,9 @@ public class PhoneNumber {
 
     @Override
     public String toString() {
-        return "PhoneNumber{" +
-                "digits='" + digits + '\'' +
-                ", type='" + phoneType + '\'' +
+        return "{" +
+                "\"digits\":\"" + digits + '\"' +
+                ",\"phoneType\":\"" + phoneType + '\"' +
                 '}';
     }
 

@@ -3,6 +3,7 @@ package com.example.phonebook.servlets;
 import com.example.phonebook.dao.PersonDAO;
 import com.example.phonebook.model.Person;
 import com.google.gson.Gson;
+import lombok.NoArgsConstructor;
 import org.apache.log4j.Logger;
 
 import javax.servlet.annotation.WebServlet;
@@ -18,14 +19,18 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @WebServlet("/phoneBook")
+@NoArgsConstructor
 public class PhoneBookServlet extends HttpServlet {
 
     private static final Logger log = Logger.getLogger(PhoneBookServlet.class);
     private final Gson gson = new Gson();
-    private final PersonDAO personDAO = new PersonDAO();
+    private PersonDAO personDAO;
 
+    public PhoneBookServlet(PersonDAO personDAO) {
+        this.personDAO = personDAO;
+    }
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) {
+    public void doGet(HttpServletRequest request, HttpServletResponse response) {
         String surname = request.getParameter("surname");
         String sortType = request.getParameter("sortType"); // Параметр для указания типа сортировки
         try {
@@ -43,7 +48,6 @@ public class PhoneBookServlet extends HttpServlet {
         Map<Integer, Person> peopleMap = personDAO.getPeople();
         List<Person> peopleList = new ArrayList<>(peopleMap.values());
 
-        // Выполняем сортировку в зависимости от параметра sortType
         if ("desc".equalsIgnoreCase(sortType)) {
             peopleList.sort(Comparator.comparing(Person::getSurname, String.CASE_INSENSITIVE_ORDER).reversed());
         } else {
